@@ -25,7 +25,22 @@ class LabelOptionMenu(tk.Frame):
         self.grid_columnconfigure(1, weight=1)
         tk.Label(self, text=text).grid(row=0, column=0, sticky="W")
         tk.OptionMenu(self, variable, *optionlist, command=command).grid(row=0, column=1, sticky="E")
+
+class Isotope(object):
+    def __init__(self, mass, name, halflife, units, label=None):
+        self.mass = mass
+        self.name = name
+        self.units = units
+        self.halflife = halflife
+        seconds_in = {"m": 60,
+                      "h": 60*60,
+                      "d": 60*60*24}
+        self.halflife_in_seconds = halflife * seconds_in[units]
+        self.label = label
+        if not self.label:
+            self.label = "%s-%s"%(self.mass, self.name)
         
+
 class DecayApp(tk.Tk):
     def __init__(self, master=None):
         tk.Tk.__init__(self, master)
@@ -35,6 +50,18 @@ class DecayApp(tk.Tk):
         self.isotope = tk.StringVar()
         self.show_halflife = tk.StringVar()
         
+        isotopes = [
+            Isotope(18, "F", 109.771, "m"),
+            Isotope(99, "mTc", 6.00718, "h", label="99m-Tc"),
+            Isotope(68, "Ge", 270.95, "d"),
+            Isotope(166, "Ho", 26.8, "h"),
+            Isotope(123, "I", 13.22, "h"),
+        ]
+        self.halflife = {}
+        for i in isotopes:
+            self.halflife[i.label] = i
+        
+        '''
         #Name of isotope must be of form int-str to sort the isotopelist
         self.halflife = {"18-F": [109.771,"m"],
                          "99-mTc": [6.00718,"h"],
@@ -50,13 +77,14 @@ class DecayApp(tk.Tk):
             #Adds the halflife in seconds for each isotope in self.halflife
             sec = data[0]*seconds_in[data[1]]
             data = data.append(sec)
-        
+        '''
         self.build_widgets()
     
     def build_widgets(self):
         defaultlist = ["FDG vandaag", "Oude tonnetje", "Nieuwe tonnetje"]
-        isotopelist = self.halflife.keys()
-        isotopelist.sort(key=lambda x:int(x.split('-')[0]) )
+        #isotopelist = self.halflife.keys()
+        #isotopelist.sort(key=lambda x:int(x.split('-')[0]) )
+        isotopelist = [self.halflife[key].label for key in sorted(self.halflife.keys(), key=lambda x:self.halflife[x].mass )]
         
         LabelOptionMenu(self, "Preset:", self.default, defaultlist, command=self.changeDefault).grid(row=0, column=0, sticky="EW")
         
@@ -90,7 +118,8 @@ class DecayApp(tk.Tk):
     
     def changeHalflife(self, e=None):
         x = self.halflife[self.isotope.get()]
-        text = "Halflife: " + str(x[0]) + " " + x[1]
+        #text = "Halflife: " + str(x[0]) + " " + x[1]
+        text = "Halflife: %s %s"%(x.halflife, x.units)
         self.show_halflife.set(text)
     
     def changeDefault(self, e=None):
@@ -176,7 +205,8 @@ class DecayApp(tk.Tk):
         if not val: return
         calc = [item for item in ("t0", "t1", "A0", "A1") if item not in val][0]
         
-        halflife = self.halflife[self.isotope.get()][2]
+        #halflife = self.halflife[self.isotope.get()][2]
+        halflife = self.halflife[self.isotope.get()].halflife_in_seconds
         
         if calc == "A1":
             dt = val["t1"]-val["t0"]
