@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-
 import Tkinter as tk
-import datetime
-import time
-import math
+from datetime import datetime, timedelta
+from math import log
 
 class LabelEntry(tk.Frame):
     def __init__(self, master, text, state=tk.NORMAL):
@@ -44,116 +42,99 @@ class DecayApp(tk.Tk):
     def __init__(self, master=None):
         tk.Tk.__init__(self, master)
         self.title("Stralingstool 1.0")
+        self.datetime_format = "%d-%m-%Y %H:%M"
         
         self.default = tk.StringVar()
-        self.isotope = tk.StringVar()
+        self.selected_isotope = tk.StringVar()
         self.show_halflife = tk.StringVar()
         
-        isotopes = [
+        isotope_list = [
             Isotope(18, "F", 109.771, "m"),
             Isotope(99, "mTc", 6.00718, "h", label="99m-Tc"),
             Isotope(68, "Ge", 270.95, "d"),
             Isotope(166, "Ho", 26.8, "h"),
             Isotope(123, "I", 13.22, "h"),
         ]
-        self.halflife = {}
-        for i in isotopes:
-            self.halflife[i.label] = i
+        self.isotopes = {}
+        for i in isotope_list:
+            self.isotopes[i.label] = i
         
         self.build_widgets()
     
     def build_widgets(self):
         defaultlist = ["FDG vandaag", "Oude tonnetje", "Nieuwe tonnetje"]
-        isotopelist = [self.halflife[key].label for key in sorted(self.halflife.keys(), key=lambda x:self.halflife[x].mass )]
+        isotopelist = [i.label for i in self.isotopes.values()]
+        isotopelist.sort(key=lambda i: self.isotopes[i].mass)
         
-        LabelOptionMenu(self, "Preset:", self.default, defaultlist, command=self.changeDefault).grid(row=0, column=0, sticky="EW")
-        
-        self.d0 = LabelEntry(self, "Date 0:")
-        self.d0.grid(row=1, column=0, sticky="E")
-        self.d1 = LabelEntry(self, "Date 1:")
-        self.d1.grid(row=2, column=0, sticky="E")
-        self.message = tk.Label(self, text='', fg='red')
-        self.message.grid(row=3, column=0)
-        tk.Button(self, text="Calculate", command=self.calculate).grid(row=4, column=0)
+        LabelOptionMenu(self, "Isotope:", self.selected_isotope, isotopelist, command=self.changeHalflife).grid(row=0,column=0, sticky="EW", padx=10)
+        tk.Label(self, textvariable=self.show_halflife).grid(row=0, column=1, sticky="W")
         
         self.t0 = LabelEntry(self, "Time 0:")
-        self.t0.grid(row=1, column=1, sticky="E", padx=10)
+        self.t0.grid(row=1, column=0, sticky="E", padx=10)
         self.t1 = LabelEntry(self, "Time 1:")
-        self.t1.grid(row=2, column=1, sticky="E", padx=10)
+        self.t1.grid(row=2, column=0, sticky="E", padx=10)
         self.dt = LabelEntry(self, "Delta:", state="readonly")
-        self.dt.grid(row=3, column=1, sticky="E", padx=10)
-        LabelOptionMenu(self, "Isotope:", self.isotope, isotopelist, command=self.changeHalflife).grid(row=4,column=1, sticky="EW", padx=10)
+        self.dt.grid(row=3, column=0, sticky="E", padx=10)
+        
+        LabelOptionMenu(self, "Preset:", self.default, defaultlist, command=self.changeDefault).grid(row=4, column=0, sticky="EW")
         
         self.A0 = LabelEntry(self, "Activity 0:")
-        self.A0.grid(row=1, column=2, sticky="E")
+        self.A0.grid(row=1, column=1, sticky="E")
         self.A1 = LabelEntry(self, "Activity 1:")
-        self.A1.grid(row=2, column=2, sticky="E")
+        self.A1.grid(row=2, column=1, sticky="E")
         self.dA = LabelEntry(self, "Ratio:", state="readonly")
-        self.dA.grid(row=3, column=2, sticky="E")
-        tk.Label(self, textvariable=self.show_halflife).grid(row=4, column=2, sticky="W")
+        self.dA.grid(row=3, column=1, sticky="E")
+        
+        tk.Button(self, text="Calculate", command=self.calculate).grid(row=4, column=1)
+        
+        self.message = tk.Label(self, text='', fg='red')
+        self.message.grid(row=5, column=0)
         
         self.default.set(defaultlist[0])
         self.changeDefault()
         self.changeHalflife()
     
     def changeHalflife(self, e=None):
-        x = self.halflife[self.isotope.get()]
+        x = self.isotopes[self.selected_isotope.get()]
         text = "Halflife: %s %s"%(x.halflife, x.units)
         self.show_halflife.set(text)
     
     def changeDefault(self, e=None):
-        now = datetime.datetime.now()
-        self.d1.set(now.strftime("%d-%m-%Y"))
-        self.t1.set(now.strftime("%H:%M"))
-        self.A1.set('')
         if self.default.get() == "FDG vandaag":
-            self.d0.set(self.d1.get())
-            self.t0.set(self.t1.get())
+            self.selected_isotope.set("18-F")
+            self.t0.set(datetime.now().strftime(self.datetime_format))
+            self.t1.set('')
             self.A0.set(100.0)
-            self.isotope.set("18-F")
+            self.A1.set(50.0)
         elif self.default.get() == "Oude tonnetje":
-            self.d0.set("10-11-2010")
-            self.t0.set("12:00")
+            self.selected_isotope.set("68-Ge")
+            self.t0.set(datetime(2010, 11, 10, 12, 00).strftime(self.datetime_format))
+            self.t1.set(datetime.now().strftime(self.datetime_format))
             self.A0.set(83.58)
-            self.isotope.set("68-Ge")
+            self.A1.set('')
         elif self.default.get() == "Nieuwe tonnetje":
-            self.d0.set("1-6-2012")
-            self.t0.set("12:00")
+            self.selected_isotope.set("68-Ge")
+            self.t0.set(datetime(2012, 6, 1, 12, 00).strftime(self.datetime_format))
+            self.t1.set(datetime.now().strftime(self.datetime_format))
             self.A0.set(74.41)
-            self.isotope.set("68-Ge")
+            self.A1.set('')
         
+        self.message.config(text='')
         self.changeHalflife()    
         self.calculate()
-        self.message.config(text='')
-    
-    def getSecondsFromDate(self, d):
-        dt = time.strptime(d.get(), "%d-%m-%Y")
-        return time.mktime(dt)
-    
-    def getSecondsFromTime(self, t):
-        dt = time.strptime(t.get(), "%H:%M")
-        sec = datetime.timedelta(hours=dt.tm_hour,minutes=dt.tm_min).total_seconds()
-        return sec
 
     def gather_variables(self):
         encountered_error = False
         val = {}
         for key, time in {"t0": self.t0, "t1": self.t1}.items():
-            date = {"t0": self.d0, "t1": self.d1}[key]
-            if date.get() and time.get():
+            if time.get():
                 try:
-                    sec = self.getSecondsFromDate(date)
-                    date.color('black')
-                except ValueError:
-                    encountered_error = True
-                    date.color('red')
-                try:
-                    sec += self.getSecondsFromTime(time)
+                    val[key] = datetime.strptime(time.get(), self.datetime_format)
                     time.color('black')
                 except ValueError:
+                    val[key] = None
                     encountered_error = True
-                    time.color('red')
-                val[key] = sec             
+                    time.color('red')       
         
         for key, value in {"A0": self.A0, "A1": self.A1}.items():
             if value.get():
@@ -182,37 +163,28 @@ class DecayApp(tk.Tk):
     def calculate(self):
         val = self.gather_variables()
         if not val: return
+        
+        halflife = self.isotopes[self.selected_isotope.get()].halflife_in_seconds
         calc = [item for item in ("t0", "t1", "A0", "A1") if item not in val][0]
-        
-        halflife = self.halflife[self.isotope.get()].halflife_in_seconds
-        
         if calc == "A1":
-            dt = val["t1"]-val["t0"]
-            s = val["A0"] * 0.5**(dt/halflife)
+            dt = (val["t1"]-val["t0"])
+            s = val["A0"] * 0.5**(dt.total_seconds()/halflife)
             self.A1.set(s)
         elif calc == "A0":
-            dt = val["t1"]-val["t0"]
-            s = val["A1"] * 2**((val["t1"]-val["t0"])/halflife)
+            dt = (val["t0"]-val["t1"])
+            s = val["A1"] * 0.5**(dt.total_seconds()/halflife)
             self.A0.set(s)
         else:
-            dt = halflife * math.log(val["A0"]/val["A1"],2)
-            if calc is "t0":
-                d_var = self.d0
-                t_var = self.t0
-                sec = val["t1"] - dt
+            sec = halflife * log(val["A0"]/val["A1"], 2)
+            dt = timedelta(seconds=sec)
+            if calc == "t0":
+                self.t0.set( (val["t1"] - dt).strftime(self.datetime_format) )
             else:
-                d_var = self.d1
-                t_var = self.t1
-                sec = val["t0"] + dt
-                
-            stamp = datetime.datetime.fromtimestamp(sec)
-            d_var.set( stamp.strftime("%d-%m-%Y") )
-            t_var.set( stamp.strftime("%H:%M") )
+                self.t1.set( (val["t0"] + dt).strftime(self.datetime_format) )
         
         self.dA.set("%.3f"%(float(self.A1.get())/float(self.A0.get())))
-        delta = datetime.timedelta(seconds=dt)
-        self.dt.set(delta)
+        self.dt.set(dt)
 
 if __name__ == "__main__":
-    app = DecayApp()
+    app = DecayApp(None)
     app.mainloop()
