@@ -39,7 +39,6 @@ class Isotope(object):
         self.label = label
         if not self.label:
             self.label = "%s-%s"%(self.mass, self.name)
-        
 
 class DecayApp(tk.Tk):
     def __init__(self, master=None):
@@ -61,29 +60,10 @@ class DecayApp(tk.Tk):
         for i in isotopes:
             self.halflife[i.label] = i
         
-        '''
-        #Name of isotope must be of form int-str to sort the isotopelist
-        self.halflife = {"18-F": [109.771,"m"],
-                         "99-mTc": [6.00718,"h"],
-                         "68-Ge": [270.95,"d"],
-                         "166-Ho": [26.8, "h"],
-                         "123-I": [13.22, "h"]}
-                         
-        seconds_in = {"m": 60,
-                      "h": 60*60,
-                      "d": 60*60*24}
-                      
-        for data in self.halflife.values():
-            #Adds the halflife in seconds for each isotope in self.halflife
-            sec = data[0]*seconds_in[data[1]]
-            data = data.append(sec)
-        '''
         self.build_widgets()
     
     def build_widgets(self):
         defaultlist = ["FDG vandaag", "Oude tonnetje", "Nieuwe tonnetje"]
-        #isotopelist = self.halflife.keys()
-        #isotopelist.sort(key=lambda x:int(x.split('-')[0]) )
         isotopelist = [self.halflife[key].label for key in sorted(self.halflife.keys(), key=lambda x:self.halflife[x].mass )]
         
         LabelOptionMenu(self, "Preset:", self.default, defaultlist, command=self.changeDefault).grid(row=0, column=0, sticky="EW")
@@ -118,7 +98,6 @@ class DecayApp(tk.Tk):
     
     def changeHalflife(self, e=None):
         x = self.halflife[self.isotope.get()]
-        #text = "Halflife: " + str(x[0]) + " " + x[1]
         text = "Halflife: %s %s"%(x.halflife, x.units)
         self.show_halflife.set(text)
     
@@ -205,7 +184,6 @@ class DecayApp(tk.Tk):
         if not val: return
         calc = [item for item in ("t0", "t1", "A0", "A1") if item not in val][0]
         
-        #halflife = self.halflife[self.isotope.get()][2]
         halflife = self.halflife[self.isotope.get()].halflife_in_seconds
         
         if calc == "A1":
